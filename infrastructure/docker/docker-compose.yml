@@ -1,0 +1,69 @@
+# docker-compose.yml — Full-stack deployment for the Git Collaboration Monitor.
+# Starts backend, frontend, Redis, and Nagios services.
+
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../../src/main/backend:/app
+    networks:
+      - monitor-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - monitor-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis_data:/data
+    networks:
+      - monitor-network
+    restart: unless-stopped
+
+  nagios:
+    image: jasonrivers/nagios:latest
+    ports:
+      - "8081:80"
+    volumes:
+      - ../../monitoring/nagios:/opt/nagios/etc/conf.d
+    networks:
+      - monitor-network
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+
+
+networks:
+  monitor-network:
+    driver: bridge

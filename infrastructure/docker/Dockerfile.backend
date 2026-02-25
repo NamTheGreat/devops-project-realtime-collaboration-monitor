@@ -1,0 +1,10 @@
+# Dockerfile.backend — Backend container for the Git Collaboration Monitor.
+# Uses Python 3.11 slim image with hot-reload for development.
+
+FROM python:3.11-slim
+WORKDIR /app
+COPY src/main/backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY src/main/backend/ .
+EXPOSE 8000
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

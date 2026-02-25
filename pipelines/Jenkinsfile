@@ -1,0 +1,131 @@
+// Jenkinsfile — Declarative Jenkins pipeline for the Git Collaboration Monitor.
+// Mirrors the GitHub Actions CI/CD stages with approval gates.
+
+pipeline {
+    agent any
+
+    environment {
+        APP_NAME     = 'git-collaboration-monitor'
+        VERSION      = "${env.BUILD_ID}"
+        DOCKER_REGISTRY = 'ghcr.io'
+    }
+
+    parameters {
+        string(name: 'BRANCH', defaultValue: 'main', description: 'Branch to build')
+        choice(name: 'ENVIRONMENT', choices: ['staging', 'production'], description: 'Deploy target')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Lint & Format Check') {
+            parallel {
+                stage('Python Lint') {
+                    steps {
+                        sh 'pip install flake8'
+                        sh 'flake8 src/main/backend/ --max-line-length=120 --statistics'
+                    }
+                }
+                stage('JS Lint') {
+                    steps {
+                        dir('src/main/frontend') {
+                            sh 'npm install'
+                            sh 'npx eslint src/ --ext .js,.jsx || true'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                sh 'pip install -r src/main/backend/requirements.txt'
+                sh 'PYTHONPATH=src/main/backend pytest tests/unit/ -v --tb=short --junitxml=test-results/unit.xml'
+            }
+            post {
+                always {
+                    junit 'test-results/unit.xml'
+                }
+            }
+        }
+
+        stage('Integration Tests') {
+            steps {
+                sh 'docker run -d --name test-redis -p 6379:6379 redis:7-alpine'
+                sh '''
+                    PYTHONPATH=src/main/backend REDIS_HOST=localhost REDIS_PORT=6379 \
+                    pytest tests/integration/ -v --tb=short --junitxml=test-results/integration.xml
+                '''
+            }
+            post {
+                always {
+                    sh 'docker stop test-redis || true'
+                    sh 'docker rm test-redis || true'
+                    junit 'test-results/integration.xml'
+                }
+            }
+        }
+
+        stage('Build Docker Images') {
+            steps {
+                sh """
+                    docker build -f infrastructure/docker/Dockerfile.backend \
+                        -t ${DOCKER_REGISTRY}/${APP_NAME}-backend:${VERSION} .
+                    docker build -f infrastructure/docker/Dockerfile.frontend \
+                        -t ${DOCKER_REGISTRY}/${APP_NAME}-frontend:${VERSION} .
+                """
+            }
+        }
+
+        stage('Security Scan') {
+            steps {
+                sh """
+                    trivy image --severity CRITICAL --exit-code 1 \
+                        ${DOCKER_REGISTRY}/${APP_NAME}-backend:${VERSION}
+                    trivy image --severity CRITICAL --exit-code 1 \
+                        ${DOCKER_REGISTRY}/${APP_NAME}-frontend:${VERSION}
+                """
+            }
+        }
+
+        stage('Deploy to Staging') {
+            when {
+                expression { params.ENVIRONMENT == 'staging' }
+            }
+            steps {
+                dir('infrastructure/docker') {
+                    sh 'docker-compose up -d --build'
+                }
+            }
+        }
+
+        stage('Deploy to Production') {
+            when {
+                expression { params.ENVIRONMENT == 'production' }
+            }
+            steps {
+                input message: 'Approve production deployment?', ok: 'Deploy'
+                dir('infrastructure/docker') {
+                    sh 'docker-compose -f docker-compose.yml up -d --build'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            mail to: 'team@example.com',
+                 subject: "SUCCESS: ${APP_NAME} Build #${VERSION}",
+                 body: "Build ${VERSION} completed successfully.\n\nEnvironment: ${params.ENVIRONMENT}\nBranch: ${params.BRANCH}"
+        }
+        failure {
+            mail to: 'team@example.com',
+                 subject: "FAILURE: ${APP_NAME} Build #${VERSION}",
+                 body: "Build ${VERSION} failed.\n\nEnvironment: ${params.ENVIRONMENT}\nBranch: ${params.BRANCH}\n\nPlease check the Jenkins console for details."
+        }
+    }
+}

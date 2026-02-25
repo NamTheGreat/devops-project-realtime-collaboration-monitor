@@ -1,0 +1,73 @@
+/**
+ * index.css — Global styles and Tailwind directives for the dashboard.
+ *
+ * Establishes the dark terminal aesthetic with custom scrollbar styling,
+ * animation utilities, and base typography.
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  /* Custom scrollbar — thin, subtle */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0a0a0f;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a2a3a;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3a3a4a;
+  }
+}
+
+@layer components {
+  .stat-card {
+    @apply bg-bg-card border border-bg-tertiary rounded-lg px-5 py-3 flex flex-col items-center justify-center;
+  }
+
+  .event-dot {
+    @apply w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5;
+  }
+
+  .event-card {
+    @apply flex gap-3 px-4 py-3 border-b border-bg-tertiary hover:bg-bg-secondary transition-colors duration-150 animate-slide-in;
+  }
+
+  .panel-header {
+    @apply text-xs uppercase tracking-widest text-text-muted px-4 py-2 border-b border-bg-tertiary flex items-center justify-between;
+  }
+
+  .branch-tag {
+    @apply text-xs px-2 py-0.5 rounded bg-bg-tertiary text-accent-blue cursor-pointer hover:bg-accent-blue hover:text-bg-primary transition-colors duration-150;
+  }
+
+  .alert-bar {
+    @apply flex items-center gap-3 px-4 py-2 border-b text-sm;
+  }
+}
+
+@layer utilities {
+  .glow-green {
+    box-shadow: 0 0 8px rgba(0, 255, 136, 0.3);
+  }
+  .glow-red {
+    box-shadow: 0 0 8px rgba(255, 59, 59, 0.3);
+  }
+}

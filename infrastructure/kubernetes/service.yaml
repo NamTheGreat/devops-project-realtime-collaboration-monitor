@@ -1,0 +1,55 @@
+# service.yaml — Kubernetes Services for the Git Collaboration Monitor.
+# ClusterIP for internal services (Redis, backend), LoadBalancer for frontend.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels:
+    app: git-monitor
+    component: redis
+spec:
+  type: ClusterIP
+  selector:
+    app: git-monitor
+    component: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+      protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  labels:
+    app: git-monitor
+    component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app: git-monitor
+    component: backend
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  labels:
+    app: git-monitor
+    component: frontend
+spec:
+  type: LoadBalancer
+  selector:
+    app: git-monitor
+    component: frontend
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP

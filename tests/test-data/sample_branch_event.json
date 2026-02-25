@@ -1,0 +1,15 @@
+{
+    "ref": "hotfix/payment-bug",
+    "ref_type": "branch",
+    "master_branch": "main",
+    "repository": {
+        "id": 123456,
+        "full_name": "octocat/hello-world",
+        "name": "hello-world",
+        "html_url": "https://github.com/octocat/hello-world"
+    },
+    "sender": {
+        "login": "carol",
+        "avatar_url": "https://avatars.githubusercontent.com/u/3?v=4"
+    }
+}

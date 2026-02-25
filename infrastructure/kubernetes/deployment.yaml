@@ -1,0 +1,121 @@
+# deployment.yaml — Kubernetes Deployments for the Git Collaboration Monitor.
+# Defines backend (2 replicas), frontend, and Redis deployments.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  labels:
+    app: git-monitor
+    component: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: git-monitor
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: git-monitor
+        component: backend
+    spec:
+      containers:
+        - name: backend
+          image: git-monitor-backend:latest
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          envFrom:
+            - configMapRef:
+                name: git-monitor-config
+          env:
+            - name: GITHUB_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: git-monitor-secrets
+                  key: webhook-secret
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: git-monitor
+    component: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: git-monitor
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: git-monitor
+        component: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: git-monitor-frontend:latest
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: git-monitor
+    component: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: git-monitor
+      component: redis
+  template:
+    metadata:
+      labels:
+        app: git-monitor
+        component: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi

@@ -1,0 +1,37 @@
+# alert_rules.yaml — Alert rules for the Git Collaboration Monitor.
+# Defines conditions and severity levels for system health monitoring.
+
+alerts:
+  - name: BackendDown
+    condition: "http_status != 200"
+    endpoint: "http://backend:8000/"
+    severity: critical
+    notify: email
+    description: "Backend API is not responding with HTTP 200"
+
+  - name: RedisDown
+    condition: "tcp_connect_failed"
+    host: "redis"
+    port: 6379
+    severity: critical
+    notify: email
+    description: "Redis server is not accepting TCP connections on port 6379"
+
+  - name: HighConflictRate
+    condition: "conflict_alerts_per_hour > 10"
+    severity: warning
+    notify: email
+    description: "More than 10 conflict alerts detected in the past hour"
+
+  - name: FrontendDown
+    condition: "http_status != 200"
+    endpoint: "http://frontend:80/"
+    severity: critical
+    notify: email
+    description: "Frontend dashboard is not accessible"
+
+  - name: HighEventRate
+    condition: "events_per_minute > 100"
+    severity: warning
+    notify: email
+    description: "Unusually high webhook event rate detected"

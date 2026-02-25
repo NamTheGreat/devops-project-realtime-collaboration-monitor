@@ -1,0 +1,231 @@
+# ci-cd.yml — GitHub Actions CI/CD pipeline for the Git Collaboration Monitor.
+# Runs lint, unit tests, integration tests, Docker builds, security scans, and deploys.
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+
+jobs:
+  # -------------------------------------------------------
+  # Stage 1: Lint & Format Check
+  # -------------------------------------------------------
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python linters
+        run: pip install flake8
+
+      - name: Run flake8
+        run: flake8 src/main/backend/ --max-line-length=120 --statistics
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install frontend dependencies
+        run: npm install
+        working-directory: src/main/frontend
+
+      - name: Run ESLint
+        run: npx eslint src/ --ext .js,.jsx || true
+        working-directory: src/main/frontend
+
+  # -------------------------------------------------------
+  # Stage 2: Unit Tests
+  # -------------------------------------------------------
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r src/main/backend/requirements.txt
+
+      - name: Run unit tests with coverage
+        run: pytest tests/unit/ -v --tb=short --junitxml=test-results/unit.xml
+        env:
+          PYTHONPATH: src/main/backend
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-results
+          path: test-results/
+
+  # -------------------------------------------------------
+  # Stage 3: Integration Tests
+  # -------------------------------------------------------
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r src/main/backend/requirements.txt
+
+      - name: Run integration tests
+        run: pytest tests/integration/ -v --tb=short --junitxml=test-results/integration.xml
+        env:
+          PYTHONPATH: src/main/backend
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: test-results/
+
+  # -------------------------------------------------------
+  # Stage 4: Build Docker Images
+  # -------------------------------------------------------
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: |
+          docker build \
+            -f infrastructure/docker/Dockerfile.backend \
+            -t ${{ env.IMAGE_PREFIX }}-backend:${{ github.sha }} \
+            .
+
+      - name: Build frontend image
+        run: |
+          docker build \
+            -f infrastructure/docker/Dockerfile.frontend \
+            -t ${{ env.IMAGE_PREFIX }}-frontend:${{ github.sha }} \
+            .
+
+      - name: Save images as artifacts
+        run: |
+          docker save ${{ env.IMAGE_PREFIX }}-backend:${{ github.sha }} | gzip > backend-image.tar.gz
+          docker save ${{ env.IMAGE_PREFIX }}-frontend:${{ github.sha }} | gzip > frontend-image.tar.gz
+
+      - name: Upload image artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: |
+            backend-image.tar.gz
+            frontend-image.tar.gz
+
+  # -------------------------------------------------------
+  # Stage 5: Security Scan
+  # -------------------------------------------------------
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download images
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+
+      - name: Load images
+        run: |
+          docker load < backend-image.tar.gz
+          docker load < frontend-image.tar.gz
+
+      - name: Run Trivy on backend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}-backend:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: 1
+
+      - name: Run Trivy on frontend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}-frontend:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: 1
+
+  # -------------------------------------------------------
+  # Stage 6: Deploy to Staging
+  # -------------------------------------------------------
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: security-scan
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy with Docker Compose
+        run: |
+          cd infrastructure/docker
+          docker-compose up -d --build
+        env:
+          GITHUB_WEBHOOK_SECRET: ${{ secrets.GITHUB_WEBHOOK_SECRET }}
+
+  # -------------------------------------------------------
+  # Stage 7: Deploy to Production
+  # -------------------------------------------------------
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: security-scan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://git-monitor.example.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy with Docker Compose
+        run: |
+          cd infrastructure/docker
+          docker-compose -f docker-compose.yml up -d --build
+        env:
+          GITHUB_WEBHOOK_SECRET: ${{ secrets.GITHUB_WEBHOOK_SECRET }}

@@ -1,0 +1,78 @@
+{
+    "ref": "refs/heads/feature/auth",
+    "before": "abc123def456789000000000000000000000000",
+    "after": "def456abc789123000000000000000000000000",
+    "repository": {
+        "id": 123456,
+        "full_name": "octocat/hello-world",
+        "name": "hello-world",
+        "html_url": "https://github.com/octocat/hello-world"
+    },
+    "pusher": {
+        "name": "alice",
+        "email": "alice@example.com"
+    },
+    "sender": {
+        "login": "alice",
+        "avatar_url": "https://avatars.githubusercontent.com/u/1?v=4"
+    },
+    "compare": "https://github.com/octocat/hello-world/compare/abc123...def456",
+    "commits": [
+        {
+            "id": "aaa111bbb222ccc333ddd444eee555fff666777",
+            "message": "feat: add login endpoint",
+            "timestamp": "2026-02-25T12:00:00Z",
+            "author": {
+                "name": "alice",
+                "email": "alice@example.com",
+                "username": "alice"
+            },
+            "added": [
+                "src/auth.py",
+                "src/auth_test.py"
+            ],
+            "modified": [
+                "src/main.py"
+            ],
+            "removed": []
+        },
+        {
+            "id": "bbb222ccc333ddd444eee555fff666777aaa111",
+            "message": "fix: handle edge case in token validation",
+            "timestamp": "2026-02-25T12:01:00Z",
+            "author": {
+                "name": "alice",
+                "email": "alice@example.com",
+                "username": "alice"
+            },
+            "added": [],
+            "modified": [
+                "src/auth.py",
+                "src/utils.py"
+            ],
+            "removed": [
+                "src/old_auth.py"
+            ]
+        },
+        {
+            "id": "ccc333ddd444eee555fff666777aaa111bbb222",
+            "message": "docs: update README with auth instructions",
+            "timestamp": "2026-02-25T12:02:00Z",
+            "author": {
+                "name": "alice",
+                "email": "alice@example.com",
+                "username": "alice"
+            },
+            "added": [],
+            "modified": [
+                "README.md"
+            ],
+            "removed": []
+        }
+    ],
+    "head_commit": {
+        "id": "ccc333ddd444eee555fff666777aaa111bbb222",
+        "message": "docs: update README with auth instructions",
+        "timestamp": "2026-02-25T12:02:00Z"
+    }
+}

@@ -1,0 +1,13 @@
+# configmap.yaml — Kubernetes ConfigMap for the Git Collaboration Monitor.
+# Stores non-sensitive configuration values used by the backend.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: git-monitor-config
+  labels:
+    app: git-monitor
+data:
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  APP_ENV: "production"

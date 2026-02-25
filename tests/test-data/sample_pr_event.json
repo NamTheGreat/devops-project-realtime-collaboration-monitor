@@ -1,0 +1,35 @@
+{
+    "action": "opened",
+    "number": 42,
+    "pull_request": {
+        "number": 42,
+        "title": "Add user authentication module",
+        "state": "open",
+        "merged": false,
+        "html_url": "https://github.com/octocat/hello-world/pull/42",
+        "user": {
+            "login": "bob",
+            "avatar_url": "https://avatars.githubusercontent.com/u/2?v=4"
+        },
+        "head": {
+            "ref": "feature/auth",
+            "sha": "abc123"
+        },
+        "base": {
+            "ref": "main",
+            "sha": "def456"
+        },
+        "created_at": "2026-02-25T13:00:00Z",
+        "updated_at": "2026-02-25T13:00:00Z"
+    },
+    "repository": {
+        "id": 123456,
+        "full_name": "octocat/hello-world",
+        "name": "hello-world",
+        "html_url": "https://github.com/octocat/hello-world"
+    },
+    "sender": {
+        "login": "bob",
+        "avatar_url": "https://avatars.githubusercontent.com/u/2?v=4"
+    }
+}

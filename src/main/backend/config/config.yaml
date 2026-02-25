@@ -1,0 +1,25 @@
+# Real-time Git Collaboration Monitor — Application Configuration
+app:
+  name: "Real-time Git Collaboration Monitor"
+  version: "1.0.0"
+  debug: false
+
+redis:
+  host: "redis"
+  port: 6379
+  max_connections: 10
+  event_ttl: 86400  # 24 hours
+
+webhook:
+  max_payload_size: 25mb
+  supported_events:
+    - push
+    - pull_request
+    - create
+    - delete
+    - issues
+
+monitoring:
+  recent_events_limit: 100
+  conflict_window_minutes: 10
+  stats_window_hours: 24
